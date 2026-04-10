@@ -1,48 +1,47 @@
-# train.py
-
+import os
 import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
-from preprocess import preprocess   # 👈 matches your function name
+from preprocess import preprocess
 
 
-# Load & preprocess data
-df = preprocess("data/churn_data.csv")
+def train_model(data_path):
+    df = preprocess(data_path)
 
-# Split features and target
-X = df.drop("Churn", axis=1)
-y = df["Churn"]
+    X = df.drop("Churn", axis=1)
+    y = df["Churn"]
 
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-# Create model
-model = RandomForestClassifier(
-    n_estimators=100,
-    max_depth=10,
-    random_state=42
-)
+    model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        random_state=42
+    )
 
-# Train model
-model.fit(X_train, y_train)
+    model.fit(X_train, y_train)
 
-# Predictions
-y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test)
 
-# Evaluation
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print("\nClassification Report:\n")
-print(classification_report(y_test, y_pred))
+    print("Accuracy:", accuracy_score(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
 
-# Save model
-import os
-os.makedirs("model", exist_ok=True)
+    os.makedirs("model", exist_ok=True)
 
-with open("model/model.pkl", "wb") as f:
-    pickle.dump(model, f)
+    # Save model
+    with open("model/model.pkl", "wb") as f:
+        pickle.dump(model, f)
 
-print("\nModel saved successfully!")
+    # ✅ Save feature columns (VERY IMPORTANT)
+    with open("model/columns.pkl", "wb") as f:
+        pickle.dump(X.columns.tolist(), f)
+
+    print("Model and columns saved!")
+
+
+if __name__ == "__main__":
+    train_model("data/churn_data.csv")
