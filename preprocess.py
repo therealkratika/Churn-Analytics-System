@@ -1,5 +1,4 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 def load_data(path):
@@ -27,39 +26,27 @@ def encode_target(df):
 def encode_features(df):
     df = df.copy()
 
+    # Simple binary mapping
     binary_cols = ["gender", "Partner", "Dependents", "PhoneService", "PaperlessBilling"]
-    le = LabelEncoder()
 
     for col in binary_cols:
         if col in df.columns:
-            df[col] = le.fit_transform(df[col])
+            df[col] = df[col].map({"Yes": 1, "No": 0, "Female": 1, "Male": 0})
 
     df = pd.get_dummies(df, drop_first=True)
 
     return df
 
 
-def scale_features(df):
-    df = df.copy()
-
-    num_cols = ["tenure", "MonthlyCharges", "TotalCharges"]
-    scaler = StandardScaler()
-
-    df[num_cols] = scaler.fit_transform(df[num_cols])
-
-    return df
-
-
-def preprocess(path, output_path="processed_data.csv"):
+def preprocess(path):
     df = load_data(path)
     df = clean_data(df)
     df = encode_target(df)
     df = encode_features(df)
-    df = scale_features(df)
 
-    df.to_csv(output_path, index=False)
     return df
 
 
 if __name__ == "__main__":
-    preprocess("data.csv")
+    df = preprocess("data/churn_data.csv")
+    print(df.head())
