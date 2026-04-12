@@ -28,7 +28,7 @@ def train_model(data_path):
         X, y,
         test_size=0.2,
         random_state=42,
-        stratify=y   # 🔥 keeps class balance
+        stratify=y  
     )
 
     # 6. MODEL SELECTION
@@ -48,9 +48,6 @@ def train_model(data_path):
 
     best_model = None
     best_score = 0
-
-    
-    # 8. K-FOLD VALIDATION (RECALL)
     
     print("\nK-Fold Cross Validation (Optimized for Recall):")
 

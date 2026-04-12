@@ -13,7 +13,7 @@ df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
 def save_show(title, filename):
     plt.title(title)
     plt.tight_layout()
-    plt.savefig(f"eda/{filename}")   # 👈 save in folder
+    plt.savefig(f"eda/{filename}")  
     plt.show()
     plt.close()
 

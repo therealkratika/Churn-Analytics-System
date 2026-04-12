@@ -11,22 +11,7 @@ st.set_page_config(page_title="Churn Dashboard", layout="wide")
 st.title("📡 Customer Churn Prediction Dashboard")
 st.caption("End-to-end ML project: EDA → Model → Insights → Prediction")
 st.markdown("---")
-
-<<<<<<< HEAD
-st.write("Enter customer details:")
-# USER INPUTS
-tenure = st.slider("Tenure (months)", 0, 72)
-monthly_charges = st.number_input("Monthly Charges", 0.0, 200.0)
-
-gender = st.selectbox("Gender", ["Male", "Female"])
-contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
-paperless = st.selectbox("Paperless Billing", ["Yes", "No"])
-# PREDICT BUTTON
-if st.button("Predict"):
-=======
-# ==========================
-# LOAD DATA
-# ==========================
+#load data with caching
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/churn_data.csv")
@@ -34,17 +19,10 @@ def load_data():
     return df.dropna()
 
 df = load_data()
-
-# ==========================
-# LOAD MODEL
-# ==========================
+#load model and artifacts
 model   = pickle.load(open("model/model.pkl",  "rb"))
 columns = pickle.load(open("model/columns.pkl","rb"))
 scaler  = pickle.load(open("model/scaler.pkl", "rb"))
-
-# ==========================
-# FEATURE IMPORTANCE
-# ==========================
 try:
     importance = model.feature_importances_
     feat_imp = pd.DataFrame({
@@ -60,12 +38,9 @@ except:
 
 top_features = feat_imp.head(5)["Feature"].tolist()
 
-# ==========================
-# PRE-CALCULATIONS
-# ==========================
+#pre-calculation
 churn_df = df[df["Churn"] == "Yes"]
 stay_df  = df[df["Churn"] == "No"]
->>>>>>> aecde59a4b1e825b0eeeaa44a366342ffb204e8a
 
 total_customers = len(df)
 total_churned   = len(churn_df)
@@ -81,25 +56,9 @@ avg_charges_stay  = stay_df["MonthlyCharges"].mean()
 contract_churn = churn_df["Contract"].value_counts()
 most_churn_contract = contract_churn.idxmax()
 
-<<<<<<< HEAD
-    if contract == "Two year" and "Contract_Two year" in input_data.columns:
-        input_data["Contract_Two year"] = 1
-    # PREDICTION
-    prediction = model.predict(input_data)[0]
-
-    if prediction == 1:
-        st.error("Customer will churn ")
-    else:
-        st.success("Customer will stay ")
-=======
-# ==========================
 # TABS
-# ==========================
 tab1, tab2 = st.tabs(["📊 Dashboard", "🎯 Prediction"])
-
-# ==========================
 # DASHBOARD TAB
-# ==========================
 with tab1:
 
     st.header("📊 Business Insights Dashboard")
@@ -160,11 +119,7 @@ with tab1:
     """)
 
     st.markdown("---")
-
-    # ==========================
-    # FINAL TAKEAWAYS (FIXED ✅)
-    # ==========================
-    st.subheader("🔑 Final Business Takeaways")
+    st.subheader(" Final Business Takeaways")
 
     st.error("""
  **High Risk Customers**
@@ -258,4 +213,3 @@ with tab2:
         else:
             st.success(f"Likely to STAY ({prob:.1f}%)")
             st.info("Stable customer profile")
->>>>>>> aecde59a4b1e825b0eeeaa44a366342ffb204e8a

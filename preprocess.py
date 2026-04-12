@@ -41,5 +41,5 @@ def preprocess(path):
     df = clean_data(df)
     df = encode_target(df)
     df = encode_features(df)
-    df, scaler = scale_features(df)  # scale at the end
+    df, scaler = scale_features(df)  
     return df, scaler
