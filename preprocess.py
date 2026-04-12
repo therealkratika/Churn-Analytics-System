@@ -9,7 +9,7 @@ def clean_data(df):
     if "customerID" in df.columns:
         df.drop(columns=["customerID"], inplace=True)
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
-    df["TotalCharges"].fillna(df["TotalCharges"].median(), inplace=True)
+    df["TotalCharges"] = df["TotalCharges"].fillna(df["TotalCharges"].median())
     return df
 
 def encode_target(df):

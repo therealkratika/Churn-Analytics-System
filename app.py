@@ -2,295 +2,235 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 # ==========================
-# LOAD MODEL AND DATA
+# CONFIG
+# ==========================
+st.set_page_config(page_title="Churn Dashboard", layout="wide")
+
+st.title("📡 Customer Churn Prediction Dashboard")
+st.caption("End-to-end ML project: EDA → Model → Insights → Prediction")
+st.markdown("---")
+
+# ==========================
+# LOAD DATA
+# ==========================
+@st.cache_data
+def load_data():
+    df = pd.read_csv("data/churn_data.csv")
+    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
+    return df.dropna()
+
+df = load_data()
+
+# ==========================
+# LOAD MODEL
 # ==========================
 model   = pickle.load(open("model/model.pkl",  "rb"))
 columns = pickle.load(open("model/columns.pkl","rb"))
 scaler  = pickle.load(open("model/scaler.pkl", "rb"))
 
-df = pd.read_csv("data/churn_data.csv")
-df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
-df.dropna(inplace=True)
+# ==========================
+# FEATURE IMPORTANCE
+# ==========================
+try:
+    importance = model.feature_importances_
+    feat_imp = pd.DataFrame({
+        "Feature": columns,
+        "Importance": importance
+    }).sort_values("Importance", ascending=False)
+except:
+    coef = model.coef_[0]
+    feat_imp = pd.DataFrame({
+        "Feature": columns,
+        "Importance": abs(coef)
+    }).sort_values("Importance", ascending=False)
+
+top_features = feat_imp.head(5)["Feature"].tolist()
 
 # ==========================
-# PRE-CALCULATE KEY NUMBERS
+# PRE-CALCULATIONS
 # ==========================
-total_customers  = len(df)
-total_churned    = (df["Churn"] == "Yes").sum()
-total_stayed     = (df["Churn"] == "No").sum()
-churn_rate       = total_churned / total_customers * 100
+churn_df = df[df["Churn"] == "Yes"]
+stay_df  = df[df["Churn"] == "No"]
 
-# Tenure insights
-avg_tenure_churn = df[df["Churn"] == "Yes"]["tenure"].mean()
-avg_tenure_stay  = df[df["Churn"] == "No"]["tenure"].mean()
+total_customers = len(df)
+total_churned   = len(churn_df)
+total_stayed    = len(stay_df)
+churn_rate      = total_churned / total_customers * 100
 
-# Monthly charges insights
-avg_charges_churn = df[df["Churn"] == "Yes"]["MonthlyCharges"].mean()
-avg_charges_stay  = df[df["Churn"] == "No"]["MonthlyCharges"].mean()
+avg_tenure_churn = churn_df["tenure"].mean()
+avg_tenure_stay  = stay_df["tenure"].mean()
 
-# Contract insights
-contract_churn = df[df["Churn"] == "Yes"]["Contract"].value_counts()
+avg_charges_churn = churn_df["MonthlyCharges"].mean()
+avg_charges_stay  = stay_df["MonthlyCharges"].mean()
+
+contract_churn = churn_df["Contract"].value_counts()
 most_churn_contract = contract_churn.idxmax()
-most_churn_contract_pct = (
-    df[(df["Churn"] == "Yes") & (df["Contract"] == most_churn_contract)].shape[0]
-    / total_churned * 100
-)
-
-# Internet insights
-internet_churn_rate = df.groupby("InternetService")["Churn"].apply(
-    lambda x: (x == "Yes").mean() * 100
-)
-most_churn_internet = internet_churn_rate.idxmax()
-most_churn_internet_pct = internet_churn_rate.max()
-
-# Feature importance
-feat_df = pd.DataFrame({
-    "Feature":    columns,
-    "Importance": model.feature_importances_
-}).sort_values("Importance", ascending=False)
-top_feature = feat_df.iloc[0]["Feature"]
-top_feature_score = feat_df.iloc[0]["Importance"]
-
-# ==========================
-# APP TITLE
-# ==========================
-st.title("📡 Customer Churn Prediction App")
-st.write("Explore the data insights or go to the Predict tab to predict churn for a customer.")
-st.markdown("---")
 
 # ==========================
 # TABS
 # ==========================
-tab1, tab2 = st.tabs(["📊 Dashboard", "🎯 Make Prediction"])
+tab1, tab2 = st.tabs(["📊 Dashboard", "🎯 Prediction"])
 
-
-# --------------------------
-# TAB 1 — DASHBOARD
-# --------------------------
+# ==========================
+# DASHBOARD TAB
+# ==========================
 with tab1:
 
-    st.header("Customer Churn Overview")
+    st.header("📊 Business Insights Dashboard")
 
-    # ── TOP KPI METRICS ──
-    st.subheader("📌 Key Numbers at a Glance")
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Total Customers",  f"{total_customers:,}")
-    k2.metric("Churned",          f"{total_churned:,}")
-    k3.metric("Retained",         f"{total_stayed:,}")
-    k4.metric("Churn Rate",       f"{churn_rate:.1f}%")
+    k1.metric("Customers", f"{total_customers:,}")
+    k2.metric("Churned", f"{total_churned:,}")
+    k3.metric("Retained", f"{total_stayed:,}")
+    k4.metric("Churn Rate", f"{churn_rate:.1f}%")
 
     st.markdown("---")
 
-    # ── ROW 1: Chart 1 + Chart 2 ──
+    # ROW 1
+    st.subheader("1️⃣ Churn & Contract Analysis")
     col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("1. Churned vs Stayed")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.countplot(data=df, x="Churn",
-                      palette={"No": "steelblue", "Yes": "tomato"}, ax=ax)
-        ax.set_xlabel("Churn")
-        ax.set_ylabel("Number of Customers")
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.info(f"📌 Out of **{total_customers:,}** customers, "
-                f"**{total_churned:,} ({churn_rate:.1f}%)** have churned. "
-                f"That means roughly **1 in every {int(100/churn_rate)} customers** leaves.")
+    col1.image("eda/eda_churn_count.png", use_container_width=True)
+    col2.image("eda/eda_contract.png", use_container_width=True)
 
-    with col2:
-        st.subheader("2. Churn by Contract Type")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.countplot(data=df, x="Contract", hue="Churn",
-                      palette={"No": "steelblue", "Yes": "tomato"}, ax=ax)
-        ax.set_xlabel("Contract Type")
-        ax.set_ylabel("Number of Customers")
-        ax.legend(title="Churn")
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.warning(f"⚠️ **{most_churn_contract}** contracts account for "
-                   f"**{most_churn_contract_pct:.1f}%** of all churned customers. "
-                   f"Customers on short contracts are far more likely to leave.")
+    st.info(f"""
+    - Churn Rate: **{churn_rate:.1f}%**
+    - Most churn from **{most_churn_contract} contracts**
+
+     Short-term contracts increase churn risk
+    """)
 
     st.markdown("---")
 
-    # ── ROW 2: Chart 3 + Chart 4 ──
-    col3, col4 = st.columns(2)
+    # ROW 2
+    st.subheader("2️⃣ Tenure & Charges")
+    col1, col2 = st.columns(2)
 
-    with col3:
-        st.subheader("3. Tenure vs Churn")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.boxplot(data=df, x="Churn", y="tenure",
-                    palette={"No": "steelblue", "Yes": "tomato"}, ax=ax)
-        ax.set_xlabel("Churn")
-        ax.set_ylabel("Tenure (months)")
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.success(f"✅ Customers who **stayed** had an average tenure of "
-                   f"**{avg_tenure_stay:.0f} months**, while those who "
-                   f"**churned** averaged only **{avg_tenure_churn:.0f} months**. "
-                   f"Newer customers are at much higher risk.")
+    col1.image("eda/eda_tenure.png", use_container_width=True)
+    col2.image("eda/eda_monthly_charges.png", use_container_width=True)
 
-    with col4:
-        st.subheader("4. Monthly Charges vs Churn")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.boxplot(data=df, x="Churn", y="MonthlyCharges",
-                    palette={"No": "steelblue", "Yes": "tomato"}, ax=ax)
-        ax.set_xlabel("Churn")
-        ax.set_ylabel("Monthly Charges ($)")
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.warning(f"⚠️ Churned customers paid an average of "
-                   f"**${avg_charges_churn:.2f}/month**, compared to "
-                   f"**${avg_charges_stay:.2f}/month** for retained customers. "
-                   f"Higher bills increase churn risk.")
+    st.success(f"""
+    - Avg tenure (Churn): **{avg_tenure_churn:.0f}**
+    - Avg tenure (Stay): **{avg_tenure_stay:.0f}**
+    - Charges higher for churn users
+
+     Early customers + high charges = high risk
+    """)
 
     st.markdown("---")
 
-    # ── ROW 3: Chart 5 + Chart 6 ──
-    col5, col6 = st.columns(2)
+    # ROW 3
+    st.subheader("3️⃣ Correlation & Support")
+    col1, col2 = st.columns(2)
 
-    with col5:
-        st.subheader("5. Churn by Internet Service")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.countplot(data=df, x="InternetService", hue="Churn",
-                      palette={"No": "steelblue", "Yes": "tomato"}, ax=ax)
-        ax.set_xlabel("Internet Service")
-        ax.set_ylabel("Number of Customers")
-        ax.legend(title="Churn")
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.warning(f"⚠️ **{most_churn_internet}** internet users have the highest "
-                   f"churn rate at **{most_churn_internet_pct:.1f}%**. "
-                   f"This may be due to higher costs or competition.")
+    col1.image("eda/eda_correlation.png", use_container_width=True)
+    col2.image("eda/eda_tech_support.png", use_container_width=True)
 
-    with col6:
-        st.subheader("6. Top 10 Important Features")
-        top10 = feat_df.head(10)
-        fig, ax = plt.subplots(figsize=(5, 4))
-        sns.barplot(data=top10, x="Importance", y="Feature",
-                    palette="viridis", ax=ax)
-        ax.set_xlabel("Importance Score")
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        # Insight
-        st.info(f"📌 The most important feature for predicting churn is "
-                f"**{top_feature}** with an importance score of "
-                f"**{top_feature_score:.3f}**. "
-                f"Focus on this feature when identifying at-risk customers.")
+    st.warning("""
+    - Tenure reduces churn
+    - No support increases churn
+
+     Support + engagement = retention
+    """)
 
     st.markdown("---")
 
-    # ── SUMMARY BOX AT BOTTOM ──
-    st.subheader("🔑 Key Takeaways")
-    st.error( "🔴 **Highest Risk:**  Month-to-month contract  +  Fiber optic internet  +  Electronic check payment")
-    st.warning("🟡 **Medium Risk:**  New customers (low tenure)  +  High monthly charges  +  No online security")
-    st.success("🟢 **Low Risk:**     Two-year contract  +  Long tenure  +  Tech support subscribed")
+    # ==========================
+    # FINAL TAKEAWAYS (FIXED ✅)
+    # ==========================
+    st.subheader("🔑 Final Business Takeaways")
 
+    st.error("""
+ **High Risk Customers**
+- Month-to-month contracts  
+- High monthly charges  
+- No tech support  
 
-# --------------------------
-# TAB 2 — PREDICTION
-# --------------------------
+ Action: Offer discounts or retention offers
+""")
+
+    st.warning("""
+ **Medium Risk Customers**
+- New customers  
+- Limited services  
+
+ Action: Improve onboarding
+""")
+
+    st.success("""
+ **Low Risk Customers**
+- Long-term contracts  
+- High tenure  
+- Tech support users  
+
+ Action: Maintain loyalty
+""")
+
+# ==========================
+# PREDICTION TAB
+# ==========================
 with tab2:
 
     st.header("🎯 Predict Customer Churn")
-    st.write("Fill in the customer details below and click **Predict** to see the result.")
 
-    col_a, col_b = st.columns(2)
+    col1, col2 = st.columns(2)
 
-    with col_a:
-        st.subheader("Account Details")
-        tenure_val    = st.slider("Tenure (months)", 0, 72, 12)
-        monthly_val   = st.number_input("Monthly Charges ($)", 0.0, 200.0, 65.0)
-        contract_val  = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
-        internet_val  = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
-        payment_val   = st.selectbox("Payment Method", [
-                            "Electronic check", "Mailed check",
-                            "Bank transfer (automatic)", "Credit card (automatic)"])
+    with col1:
+        tenure = st.slider("Tenure", 0, 72, 12)
+        monthly = st.number_input("Monthly Charges", 0.0, 200.0, 65.0)
+        contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
 
-    with col_b:
-        st.subheader("Personal & Service Details")
-        gender_val    = st.selectbox("Gender", ["Male", "Female"])
-        partner_val   = st.selectbox("Has Partner?", ["Yes", "No"])
-        paperless_val = st.selectbox("Paperless Billing?", ["Yes", "No"])
-        security_val  = st.selectbox("Online Security", ["Yes", "No", "No internet service"])
-        techsup_val   = st.selectbox("Tech Support",    ["Yes", "No", "No internet service"])
+    with col2:
+        internet = st.selectbox("Internet", ["DSL", "Fiber optic", "No"])
+        gender = st.selectbox("Gender", ["Male", "Female"])
 
-    st.markdown("---")
+    if st.button("Predict"):
 
-    if st.button("🎯 Predict Churn"):
-
-        # Step 1: all zeros
         input_data = pd.DataFrame([np.zeros(len(columns))], columns=columns)
 
-        # Step 2: scale numeric
-        raw    = pd.DataFrame([[tenure_val, monthly_val, tenure_val * monthly_val]],
-                              columns=["tenure", "MonthlyCharges", "TotalCharges"])
+        raw = pd.DataFrame([[tenure, monthly, tenure*monthly]],
+                           columns=["tenure","MonthlyCharges","TotalCharges"])
         scaled = scaler.transform(raw)
-        input_data["tenure"]         = scaled[0][0]
+
+        input_data["tenure"] = scaled[0][0]
         input_data["MonthlyCharges"] = scaled[0][1]
-        input_data["TotalCharges"]   = scaled[0][2]
+        input_data["TotalCharges"] = scaled[0][2]
 
-        # Step 3: binary columns
-        input_data["gender"]           = 1 if gender_val    == "Female" else 0
-        input_data["Partner"]          = 1 if partner_val   == "Yes"    else 0
-        input_data["PaperlessBilling"] = 1 if paperless_val == "Yes"    else 0
+        input_data["gender"] = 1 if gender == "Female" else 0
 
-        # Step 4: one-hot columns
-        def fill(col, value):
-            if col in columns:
-                input_data[col] = value
+        if contract == "One year":
+            input_data["Contract_One year"] = 1
+        elif contract == "Two year":
+            input_data["Contract_Two year"] = 1
 
-        fill("Contract_One year",                     1 if contract_val == "One year"                   else 0)
-        fill("Contract_Two year",                     1 if contract_val == "Two year"                   else 0)
-        fill("InternetService_Fiber optic",           1 if internet_val == "Fiber optic"                else 0)
-        fill("InternetService_No",                    1 if internet_val == "No"                         else 0)
-        fill("PaymentMethod_Electronic check",        1 if payment_val  == "Electronic check"           else 0)
-        fill("PaymentMethod_Mailed check",            1 if payment_val  == "Mailed check"               else 0)
-        fill("PaymentMethod_Credit card (automatic)", 1 if payment_val  == "Credit card (automatic)"    else 0)
-        fill("OnlineSecurity_Yes",                    1 if security_val == "Yes"                        else 0)
-        fill("OnlineSecurity_No internet service",    1 if security_val == "No internet service"        else 0)
-        fill("TechSupport_Yes",                       1 if techsup_val  == "Yes"                        else 0)
-        fill("TechSupport_No internet service",       1 if techsup_val  == "No internet service"        else 0)
+        if internet == "Fiber optic":
+            input_data["InternetService_Fiber optic"] = 1
+        elif internet == "No":
+            input_data["InternetService_No"] = 1
 
-        # Step 5: predict
-        prediction  = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0][1] * 100
+        pred = model.predict(input_data)[0]
+        prob = model.predict_proba(input_data)[0][1] * 100
 
-        # Step 6: result + chart side by side
-        res1, res2 = st.columns(2)
+        if pred == 1:
+            st.error(f"⚠️ Likely to CHURN ({prob:.1f}%)")
 
-        with res1:
-            st.subheader("Result")
-            if prediction == 1:
-                st.error( f"⚠️ This customer is likely to **CHURN**")
-                st.metric("Churn Probability", f"{probability:.1f}%")
-                st.warning("💡 Tip: Offer a discount or upgrade to a longer contract "
-                           "to retain this customer.")
-            else:
-                st.success(f"✅ This customer is likely to **STAY**")
-                st.metric("Churn Probability", f"{probability:.1f}%")
-                st.info("💡 This customer looks stable. Keep engagement consistent.")
+            reasons = []
 
-        with res2:
-            st.subheader("Prediction Confidence")
-            fig, ax = plt.subplots(figsize=(4, 3))
-            sns.barplot(x=["Will Stay", "Will Churn"],
-                        y=[100 - probability, probability],
-                        palette=["steelblue", "tomato"], ax=ax)
-            ax.set_ylabel("Probability (%)")
-            ax.set_ylim(0, 100)
-            for i, v in enumerate([100 - probability, probability]):
-                ax.text(i, v + 1, f"{v:.1f}%", ha="center", fontweight="bold")
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.close()
+            if tenure < 12:
+                reasons.append("Low tenure (new customer)")
+            if monthly > 70:
+                reasons.append("High monthly charges")
+            if contract == "Month-to-month":
+                reasons.append("Short-term contract")
+            if internet == "Fiber optic":
+                reasons.append("Fiber optic users have higher churn")
+
+            st.warning(" Possible Reasons:")
+            for r in reasons[:2]:
+                st.write(f"• {r}")
+
+        else:
+            st.success(f"Likely to STAY ({prob:.1f}%)")
+            st.info("Stable customer profile")
