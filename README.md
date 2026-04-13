@@ -8,8 +8,11 @@
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge)
 ![Seaborn](https://img.shields.io/badge/Seaborn-4C72B0?style=for-the-badge)
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 
 > 🚀 Predict customer churn, compare ML models, and understand **WHY customers leave** — all in one intelligent dashboard.
+
+🌐 **Live Demo:** [https://churn-analytics-system.onrender.com](https://churn-analytics-system.onrender.com)
 
 ---
 
@@ -49,6 +52,14 @@ Customer churn is a major challenge for subscription-based businesses.
 | Visualization | Matplotlib, Seaborn |
 | App Framework | Streamlit |
 | Preprocessing | Scikit-learn |
+| Deployment | Render |
+
+---
+
+## 🌐 Live Deployment
+
+> The app is live and accessible at:  
+> 👉 [https://churn-analytics-system.onrender.com](https://churn-analytics-system.onrender.com)
 
 ---
 
@@ -118,4 +129,4 @@ churn-app/
 [![GitHub](https://img.shields.io/badge/GitHub-komallsingh-181717?style=flat&logo=github&logoColor=white)](https://github.com/komallsingh)
 
 **Kratika Gupta**
-[![GitHub](https://img.shields.io/badge/GitHub-thearealkratika-181717?style=flat&logo=github&logoColor=white)](https://github.com/therealkratika)
+[![GitHub](https://img.shields.io/badge/GitHub-thearealkratika-181717?style=flat&logo=github&logoColor=white)](https://github.com/thearealkratika)
