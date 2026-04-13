@@ -2,24 +2,44 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import os
 
 st.set_page_config(page_title="Churn Dashboard", layout="wide")
 
 st.title("📡 Customer Churn Prediction Dashboard")
 st.caption("End-to-end ML project: EDA → Model → Insights → Prediction")
 st.markdown("---")
-#load data with caching
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATA_PATH = os.path.join(BASE_DIR, "data", "churn_data.csv")
+MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
+COLUMNS_PATH = os.path.join(BASE_DIR, "model", "columns.pkl")
+SCALER_PATH = os.path.join(BASE_DIR, "model", "scaler.pkl")
+EDA_CHURN = os.path.join(BASE_DIR, "EDA", "eda_churn_count.png")
+EDA_CONTRACT = os.path.join(BASE_DIR, "EDA", "eda_contract.png")
+EDA_TENURE = os.path.join(BASE_DIR, "EDA", "eda_tenure.png")
+EDA_MONTHLY = os.path.join(BASE_DIR, "EDA", "eda_monthly_charges.png")
+EDA_CORR = os.path.join(BASE_DIR, "EDA", "eda_correlation.png")
+EDA_SUPPORT = os.path.join(BASE_DIR, "EDA", "eda_tech_support.png")
+
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/churn_data.csv")
+    df = pd.read_csv(DATA_PATH)
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
     return df.dropna()
 
 df = load_data()
-#load model and artifacts
-model   = pickle.load(open("model/model.pkl",  "rb"))
-columns = pickle.load(open("model/columns.pkl","rb"))
-scaler  = pickle.load(open("model/scaler.pkl", "rb"))
+
+@st.cache_resource
+def load_model():
+    model = pickle.load(open(MODEL_PATH, "rb"))
+    columns = pickle.load(open(COLUMNS_PATH, "rb"))
+    scaler = pickle.load(open(SCALER_PATH, "rb"))
+    return model, columns, scaler
+
+model, columns, scaler = load_model()
+
 try:
     importance = model.feature_importances_
     feat_imp = pd.DataFrame({
@@ -35,7 +55,6 @@ except:
 
 top_features = feat_imp.head(5)["Feature"].tolist()
 
-#pre-calculation
 churn_df = df[df["Churn"] == "Yes"]
 stay_df  = df[df["Churn"] == "No"]
 
@@ -53,12 +72,11 @@ avg_charges_stay  = stay_df["MonthlyCharges"].mean()
 contract_churn = churn_df["Contract"].value_counts()
 most_churn_contract = contract_churn.idxmax()
 
-# TABS
 tab1, tab2 = st.tabs(["📊 Dashboard", "🎯 Prediction"])
-# DASHBOARD TAB
+
 with tab1:
 
-    st.header("📊 Business Insights Dashboard")
+    st.header("Business Insights Dashboard")
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Customers", f"{total_customers:,}")
@@ -68,84 +86,51 @@ with tab1:
 
     st.markdown("---")
 
-    # ROW 1
+    # 1️⃣ Churn & Contract
     st.subheader("1️⃣ Churn & Contract Analysis")
     col1, col2 = st.columns(2)
 
-    col1.image("eda/eda_churn_count.png", use_container_width=True)
-    col2.image("eda/eda_contract.png", use_container_width=True)
+    col1.image(EDA_CHURN, use_container_width=True)
+    col2.image(EDA_CONTRACT, use_container_width=True)
 
-    st.info(f"""
-    - Churn Rate: **{churn_rate:.1f}%**
-    - Most churn from **{most_churn_contract} contracts**
-
-     Short-term contracts increase churn risk
-    """)
+    st.info("""
+ Insight:
+- Month-to-month customers show the highest churn
+- Long-term contracts improve retention
+ Recommendation: Encourage long-term plans with discounts
+""")
 
     st.markdown("---")
 
-    # ROW 2
+    # Tenure & Charges
     st.subheader("2️⃣ Tenure & Charges")
     col1, col2 = st.columns(2)
 
-    col1.image("eda/eda_tenure.png", use_container_width=True)
-    col2.image("eda/eda_monthly_charges.png", use_container_width=True)
+    col1.image(EDA_TENURE, use_container_width=True)
+    col2.image(EDA_MONTHLY, use_container_width=True)
 
-    st.success(f"""
-    - Avg tenure (Churn): **{avg_tenure_churn:.0f}**
-    - Avg tenure (Stay): **{avg_tenure_stay:.0f}**
-    - Charges higher for churn users
-
-     Early customers + high charges = high risk
-    """)
+    st.info("""
+ Insight:
+- Low tenure customers churn more
+- High monthly charges increase churn risk
+Recommendation: Focus on early retention offers
+""")
 
     st.markdown("---")
 
-    # ROW 3
+    # 3Correlation & Support
     st.subheader("3️⃣ Correlation & Support")
     col1, col2 = st.columns(2)
 
-    col1.image("eda/eda_correlation.png", use_container_width=True)
-    col2.image("eda/eda_tech_support.png", use_container_width=True)
+    col1.image(EDA_CORR, use_container_width=True)
+    col2.image(EDA_SUPPORT, use_container_width=True)
 
-    st.warning("""
-    - Tenure reduces churn
-    - No support increases churn
-
-     Support + engagement = retention
-    """)
-
-    st.markdown("---")
-    st.subheader(" Final Business Takeaways")
-
-    st.error("""
- **High Risk Customers**
-- Month-to-month contracts  
-- High monthly charges  
-- No tech support  
-
- Action: Offer discounts or retention offers
+    st.info("""
+Insight:
+- Tenure negatively correlates with churn
+- Lack of tech support increases churn
+ Recommendation: Improve support services
 """)
-
-    st.warning("""
- **Medium Risk Customers**
-- New customers  
-- Limited services  
-
- Action: Improve onboarding
-""")
-
-    st.success("""
- **Low Risk Customers**
-- Long-term contracts  
-- High tenure  
-- Tech support users  
-
- Action: Maintain loyalty
-""")
-
-
-# PREDICTION TAB
 with tab2:
 
     st.header("🎯 Predict Customer Churn")
@@ -188,24 +173,33 @@ with tab2:
         pred = model.predict(input_data)[0]
         prob = model.predict_proba(input_data)[0][1] * 100
 
+        #Reason logic
+        reason = []
+
+        if tenure < 12:
+            reason.append("Low tenure (new customer)")
+
+        if monthly > 80:
+            reason.append("High monthly charges")
+
+        if contract == "Month-to-month":
+            reason.append("Flexible contract (higher churn risk)")
+
+        if internet == "Fiber optic":
+            reason.append("Fiber users tend to churn more")
+
         if pred == 1:
             st.error(f"⚠️ Likely to CHURN ({prob:.1f}%)")
 
-            reasons = []
-
-            if tenure < 12:
-                reasons.append("Low tenure (new customer)")
-            if monthly > 70:
-                reasons.append("High monthly charges")
-            if contract == "Month-to-month":
-                reasons.append("Short-term contract")
-            if internet == "Fiber optic":
-                reasons.append("Fiber optic users have higher churn")
-
-            st.warning(" Possible Reasons:")
-            for r in reasons[:2]:
-                st.write(f"• {r}")
+            if reason:
+                st.warning("Possible Reasons:")
+                for r in reason:
+                    st.write(f"• {r}")
 
         else:
             st.success(f"Likely to STAY ({prob:.1f}%)")
-            st.info("Stable customer profile")
+
+            if reason:
+                st.info("Risk Factors to Monitor:")
+                for r in reason:
+                    st.write(f"• {r}")
